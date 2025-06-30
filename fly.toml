@@ -1,19 +1,16 @@
 app = "pulse-delivery13"
 
-[build]
-  command = "python bot.py"
+[env]
+  PYTHONUNBUFFERED = "1"
 
-[[http_service.checks]]
-  interval = "10s"
-  timeout = "2s"
-  method = "GET"
-  path = "/healthz"  # Той самий шлях, що й у коді
-[vm]
-memory = "512mb"  # Мінімум для Python + Redis
-cpu_kind = "shared"
-cpus = 1
-[http_service]
-internal_port = 8080
-force_https = true
-auto_stop_machines = true
-auto_start_machines = true
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443

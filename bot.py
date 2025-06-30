@@ -1087,7 +1087,7 @@ async def admin_start(callback: types.CallbackQuery):
     await callback.message.edit_text("▶️ Бот запущено", reply_markup=admin_main_kb())
     await callback.answer("▶️ Запущено")
 
-@dp.callback_query(F.data == "admin_stop_bot"))
+@dp.callback_query(F.data == "admin_stop_bot")
 async def admin_stop(callback: types.CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         await callback.answer("⛔ У вас немає доступу")
@@ -1099,7 +1099,7 @@ async def admin_stop(callback: types.CallbackQuery):
     await bot.session.close()
     os._exit(0)
 
-@dp.callback_query(F.data == "admin_back"))
+@dp.callback_query(F.data == "admin_back")
 async def admin_back(callback: types.CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         await callback.answer("⛔ У вас немає доступу")
