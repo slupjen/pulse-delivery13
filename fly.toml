@@ -1,0 +1,4 @@
+app = "pulse-delivery13"
+
+[build]
+  command = "python bot.py"
