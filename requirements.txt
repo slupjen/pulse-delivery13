@@ -1,3 +1,4 @@
 aiogram==3.0.0b7
-aiohttp
+aiohttp==3.8.6
 python-dotenv
+redis>=4.5.5
