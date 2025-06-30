@@ -1065,7 +1065,7 @@ async def unblock_user(callback: types.CallbackQuery):
             reply_markup=admin_blacklist_kb(BLACKLIST)
         )
 
-@dp.callback_query(F.data == "admin_pause_bot"))
+@dp.callback_query(F.data == "admin_pause_bot")
 async def admin_pause(callback: types.CallbackQuery):
     global BOT_RUNNING
     if callback.from_user.id != ADMIN_ID:
