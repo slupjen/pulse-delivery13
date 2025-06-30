@@ -1,4 +1,4 @@
-aiohttp==3.9.0b0  # или новее, если доступно
---no-binary aiohttp
+aiogram==3.4.1
+aiohttp==3.9.3
 python-dotenv==1.1.1
 redis==4.6.0
