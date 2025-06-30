@@ -24,10 +24,8 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 from aiohttp import web
 from dotenv import load_dotenv
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram import Bot, Dispatcher
 
-bot = Bot(token=os.getenv("TELEGRAM_BOT_TOKEN"))
-dp = Dispatcher(storage=MemoryStorage())
+
 
 # Завантаження змінних середовища
 load_dotenv()
@@ -1109,15 +1107,7 @@ async def admin_back(callback: types.CallbackQuery):
     await callback.message.edit_text("👨‍💻 <b>Адмін панель</b>", reply_markup=admin_main_kb())
     await callback.answer()
 
-# ==================== ОБРОБКА ПОМИЛОК ====================
-async def on_startup(bot: Bot):
-    logger.info("Бот успішно запущений")
-    await bot.send_message(chat_id=ADMIN_ID, text="🟢 Бот запущений")
 
-async def on_shutdown(bot: Bot):
-    logger.info("Бот зупиняється...")
-    await bot.send_message(chat_id=ADMIN_ID, text="🔴 Бот зупиняється")
-    await bot.session.close()
 
 # ==================== ЗАПУСК БОТА ====================
 async def on_startup(bot: Bot):
