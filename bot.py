@@ -1,7 +1,16 @@
-import sys
-import os
 import asyncio
 import logging
+import os
+from aiogram import Bot, Dispatcher, F
+from aiogram.types import Message, CallbackQuery
+from aiogram.enums import ParseMode
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.client.default import DefaultBotProperties
+
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+dp = Dispatcher(storage=MemoryStorage())
 import time
 import random
 import signal
@@ -23,9 +32,6 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 from dotenv import load_dotenv
-from aiogram.fsm.storage.memory import MemoryStorage
-
-
 
 # Завантаження змінних середовища
 load_dotenv()
@@ -43,10 +49,10 @@ CHANNEL_ID = os.getenv('CHANNEL_ID', "@pulsedelivery")
 GEOCODING_API_KEY = os.getenv('GEOCODING_API_KEY')
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
-# Налаштування вебхуку для Fly.io
-WEB_SERVER_HOST = '0.0.0.0'
-WEB_SERVER_PORT = int(os.getenv('PORT', 8080))
-WEBHOOK_PATH = '/webhook'
+# Налаштування вебхуку для Render.com
+WEB_SERVER_HOST = os.getenv('WEB_SERVER_HOST', '0.0.0.0')
+WEB_SERVER_PORT = int(os.getenv('PORT', 8000))
+WEBHOOK_PATH = os.getenv('WEBHOOK_PATH', '/webhook')
 WEBHOOK_SECRET = os.getenv('WEBHOOK_SECRET')
 BASE_WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 
@@ -71,14 +77,8 @@ logger = logging.getLogger(__name__)
 
 # ==================== ІНІЦІАЛІЗАЦІЯ ====================
 bot = Bot(token=API_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-storage = RedisStorage.from_url(REDIS_URL) if REDIS_URL.startswith('redis://') else MemoryStorage()
+storage = RedisStorage.from_url(REDIS_URL)  # Використовуємо Redis для зберігання стану
 dp = Dispatcher(storage=storage)
-
-# Створюємо aiohttp додаток (якщо ще не створено)
-app = web.Application()
-
-# Додаємо health-check ендпоінт
-app.router.add_get("/healthz", lambda request: web.Response(text="OK"))
 
 # ==================== СТАНИ ФОРМИ ====================
 class OrderForm(StatesGroup):
@@ -1029,7 +1029,7 @@ async def admin_add_blacklist(callback: types.CallbackQuery):
     )
     await callback.answer()
 
-@dp.callback_query(F.data.startswith("unblock_"))
+@dp.callback_query(F.data.startswith("unblock_")
 async def unblock_user(callback: types.CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         await callback.answer("⛔ У вас немає доступу")
@@ -1065,7 +1065,7 @@ async def unblock_user(callback: types.CallbackQuery):
             reply_markup=admin_blacklist_kb(BLACKLIST)
         )
 
-@dp.callback_query(F.data == "admin_pause_bot")
+@dp.callback_query(F.data == "admin_pause_bot"))
 async def admin_pause(callback: types.CallbackQuery):
     global BOT_RUNNING
     if callback.from_user.id != ADMIN_ID:
@@ -1087,7 +1087,7 @@ async def admin_start(callback: types.CallbackQuery):
     await callback.message.edit_text("▶️ Бот запущено", reply_markup=admin_main_kb())
     await callback.answer("▶️ Запущено")
 
-@dp.callback_query(F.data == "admin_stop_bot")
+@dp.callback_query(F.data == "admin_stop_bot"))
 async def admin_stop(callback: types.CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         await callback.answer("⛔ У вас немає доступу")
@@ -1099,7 +1099,7 @@ async def admin_stop(callback: types.CallbackQuery):
     await bot.session.close()
     os._exit(0)
 
-@dp.callback_query(F.data == "admin_back")
+@dp.callback_query(F.data == "admin_back"))
 async def admin_back(callback: types.CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         await callback.answer("⛔ У вас немає доступу")
@@ -1107,13 +1107,21 @@ async def admin_back(callback: types.CallbackQuery):
     await callback.message.edit_text("👨‍💻 <b>Адмін панель</b>", reply_markup=admin_main_kb())
     await callback.answer()
 
+# ==================== ОБРОБКА ПОМИЛОК ====================
+async def on_startup(bot: Bot):
+    logger.info("Бот успішно запущений")
+    await bot.send_message(chat_id=ADMIN_ID, text="🟢 Бот запущений")
 
+async def on_shutdown(bot: Bot):
+    logger.info("Бот зупиняється...")
+    await bot.send_message(chat_id=ADMIN_ID, text="🔴 Бот зупиняється")
+    await bot.session.close()
 
 # ==================== ЗАПУСК БОТА ====================
 async def on_startup(bot: Bot):
     logger.info("Бот успішно запущений")
     
-    # Встановлюємо вебхук на Fly.io
+    # Встановлюємо вебхук на Render.com
     if BASE_WEBHOOK_URL:
         webhook_url = f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}"
         await bot.set_webhook(
@@ -1134,6 +1142,11 @@ async def on_shutdown(bot: Bot):
     await bot.send_message(chat_id=ADMIN_ID, text="🔴 Бот зупиняється")
     await bot.session.close()
 
+async def handle_shutdown(signal, loop):
+    logger.info("Отримано сигнал завершення...")
+    await on_shutdown(bot)
+    loop.stop()
+
 async def main():
     # Додаємо middleware
     dp.message.middleware(ProtectionMiddleware())
@@ -1144,7 +1157,7 @@ async def main():
     
     # Налаштовуємо сервер для вебхуків
     if BASE_WEBHOOK_URL:
-        # Підключаємо вебхук (якщо використовуєте)
+        app = web.Application()
         webhook_requests_handler = SimpleRequestHandler(
             dispatcher=dp,
             bot=bot,
@@ -1153,6 +1166,13 @@ async def main():
         webhook_requests_handler.register(app, path=WEBHOOK_PATH)
         setup_application(app, dp, bot=bot)
         
+        # Налаштовуємо обробку сигналів для коректного завершення
+        loop = asyncio.get_event_loop()
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            loop.add_signal_handler(
+                sig, lambda: asyncio.create_task(handle_shutdown(sig, loop))
+        
+        # Запускаємо сервер
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
@@ -1170,7 +1190,5 @@ async def main():
         await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
-        logger.info("Бот зупинено")
+    import asyncio
+    asyncio.run(main())  # або запуск твоєї стартової функції
